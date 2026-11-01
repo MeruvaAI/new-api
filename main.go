@@ -140,7 +140,7 @@ func main() {
 
 	if os.Getenv("ENABLE_PPROF") == "true" {
 		gopool.Go(func() {
-			log.Println(http.ListenAndServe("0.0.0.0:8005", nil))
+			log.Println(http.ListenAndServe("127.0.0.1:8005", nil)) // Meruva patch: pprof is loopback-only
 		})
 		go common.Monitor()
 		common.SysLog("pprof enabled")
@@ -192,7 +192,8 @@ func main() {
 	// Log startup success message
 	common.LogStartupSuccess(startTime, port)
 
-	err = server.Run(":" + port)
+	// Meruva patch: BIND_HOST restricts the listener (e.g. 127.0.0.1 or a private IP). Empty = all interfaces (upstream default).
+	err = server.Run(bindHost("") + ":" + port)
 	if err != nil {
 		common.FatalLog("failed to start HTTP server: " + err.Error())
 	}
@@ -313,4 +314,12 @@ func InitResources() error {
 	}
 
 	return nil
+}
+
+// bindHost returns BIND_HOST if set, else def. Meruva patch (AGPL: published in our fork).
+func bindHost(def string) string {
+	if h := os.Getenv("BIND_HOST"); h != "" {
+		return h
+	}
+	return def
 }
